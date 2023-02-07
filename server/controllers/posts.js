@@ -27,8 +27,9 @@ const getPost = async (req, res) => {
 }
 
 const createPost = async (req, res) => {
-    const body = req.body;
-    const newPost = new PostMessage(body);
+    const post = req.body;
+
+    const newPost = new PostMessage({...post, creator: req.userId, createdAt: new Date().toISOString()});
 
     try {
         await newPost.save();
@@ -67,11 +68,21 @@ const deletePost = async (req, res) => {
 
 const likePost = async (req, res) => {
     const { id } = req.params;
-    console.log(id);
+
+    if(!req.userId) return res.json({ message: 'Unauthenticated' });
 
     const post = await PostMessage.findById(id);
-    const updatedPost = await PostMessage.findByIdAndUpdate(id, { likeCount: post.likeCount + 1 }, { new: true});
-    console.log(updatedPost);
+    
+    const index = post.likes.findIndex((id) => id === String(req.userId));
+
+    if(index === -1){
+        post.likes.push(req.userId);
+    } else {
+        post.likes = post.likes.filter((id) => id !== String(req.userId));
+    }
+
+    const updatedPost = await PostMessage.findByIdAndUpdate(id, { likes: post.likes }, { new: true});
+    
     res.json(updatedPost);
 }
 
